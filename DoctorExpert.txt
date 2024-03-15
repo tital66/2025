@@ -1,0 +1,472 @@
+practical 6
+
+## Image Classification with CNN
+!pip install opencv-python
+
+!pip install tensorflow
+
+!pip install imblearn
+
+import numpy as np
+import cv2 as cv
+
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow import keras
+
+from tensorflow.keras import datasets, layers, models
+from tensorflow.keras.layers import MaxPooling2D, Conv2D, Dense
+
+## Data import
+(tr_img,tr_labels),(testing_img,testing_labels)=datasets.cifar10.load_data()
+tr_img.shape
+tr_labels.shape
+tr_labels[0]
+testing_img.shape
+testing_labels.shape
+
+## Scaling the intensity of the imagesdown between 0 and 1
+## Scaling the intensity of the imagesdown between 0 and 1 
+
+tr_img_scaled,testing_img_scaled=tr_img/255,testing_img/255
+class_names = ['Airplane', 'Automobile', 'Bird', 'Cat', 'Deer', 'Dog', 'Frog', 'Horse', 'Ship', 'Truck']
+tr_labels[0][0]
+
+plt.figure(figsize=(10,10))
+
+for i in range(100):
+    plt.subplot(10,10,i + 1)
+    plt.subplots_adjust(left=0.1,bottom=0.1,right=0.9,top=0.9,wspace=0.6,hspace=0.9)
+    plt.xticks([])
+    plt.yticks([])
+    plt.imshow(tr_img[i])
+    plt.xlabel(class_names[tr_labels[i][0]])
+plt.show()
+
+tr_img_scaled[10]
+plt.imshow(tr_img_scaled[10])
+plt.imshow(tr_img[10])
+plt.imshow(tr_img_scaled[24])
+plt.imshow(tr_img[24])
+
+##Creating model
+model=models.Sequential()
+model.add(layers.Conv2D(32,(3,3),activation='relu',input_shape=(32,32,3)))
+model.add(MaxPooling2D(2,2))
+model.add(Conv2D(64,(3,3),activation='relu'))
+model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Conv2D(64,(3,3),activation='relu'))
+model.add(layers.Flatten())
+
+model.add(Dense(64,activation='relu'))
+model.add(Dense(10,activation='softmax'))
+
+model.compile(optimizer='adam',loss='sparse_categorical_crossentropy',metrics=['accuracy'])
+model.fit(tr_img_scaled,tr_labels,epochs10,validation_data=(testing_img_scaled,testing_labels))
+loss,accuracy=model.evaluate(testing_img_scaled,testing_labels)
+
+print('loss=',loss)
+print('accuracy=',accuracy)
+
+
+## Picking the model
+
+model.save(\"Image_classification\")
+model=models.load_model('Image_classification')
+import pickle
+pickle.dump(model,open('img_class.pkl','wb'))
+
+## Opening the saved model
+pickled_model=pickle.load(open('img_class.pkl','rb'))
+img_test1=cv.imread("C:/Users/Shruti/Downloads/Bird.jpg")
+img_test1
+plt.imshow(img_test1)
+
+## Prediction
+img_test1=cv.cvtColor(img_test1,cv.COLOR_BGR2RGB)
+img_test1_resized = cv.resize(img_test1, (32, 32))
+img_test1_scaled=img_test1_resized/255
+img_test1_final=np.reshape(img_test1_scaled,(1,32,32,3))
+
+prediction=model.predict(img_test1_final)
+prediction
+index=np.argmax(prediction)
+class_names[index]
+
+
+
+Practical 9   Regression using pyspark
+
+import pyspark
+
+from pyspark import SparkContext 
+from pyspark.sql import SparkSession
+
+df=spark.read.option("inferSchema",True).option("header",True).csv("/FileStore/tables/Admission_Predict.csv")
+
+df.show(5)
+df.printSchema()
+df.columns
+df.count()
+len(df.columns)
+
+from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.feature import StringIndexer,OneHotEncoder
+
+x=df.drop("Serial No.","Admit")
+x.show(10)
+
+va=VectorAssembler(inputCols=x.columns,outputCol="feature")
+df=va.transform(df)
+df.show()
+
+df.select("feature").show()
+
+# Rename the y dependent variable as label since(spark) it takes the "label" column as "y"
+# Here we are basically Renaming the column Admit to-> label
+df=df.withColumnRenamed("Admit","label")
+df.show()
+
+df_new=df.select("feature","label")
+df_new.show()
+
+# Splitting the dataset
+train,test=df_new.randomSplit([.80,.20],seed=1)
+
+train.show()
+test.show()
+
+train.count()
+test.count()
+
+
+# Modelling
+from pyspark.ml.regression import LinearRegression
+
+model=LinearRegression(featuresCol="feature",labelCol="label")
+model=model.fit(train)
+
+predict_train=model.transform(train)
+predict_train.show()
+
+predict_test=model.transform(test)
+predict_test.show()
+
+from pyspark.ml.evaluation import RegressionEvaluator
+eval=RegressionEvaluator()
+
+eval=eval.evaluate(predict_test,{eval.metricName:"r2"})
+eval
+eval1=RegressionEvaluator()
+eval1=eval1.evaluate(predict_train,{eval1.metricName:"r2"})
+eval1
+
+
+
+
+
+
+practical 7 linear regression after preprocessing the columns
+
+import pyspark
+from pyspark import SparkContext
+from pyspark.sql import SparkSession
+from pyspark.ml.feature import StringIndexer,OneHotEncoder,VectorAssembler
+from pyspark.ml.regression import LinearRegression
+
+df=spark.read.option("inferSchema",True).option("header",True).csv("/FileStore/tables/CarPrice_Assignment__1_.csv")
+df.show(5)
+
+df.columns
+
+df.printSchema()
+
+df=df.drop("car_Id","CarName")
+df.show(5)
+
+stri_cols=["fueltype","aspiration","doornumber","carbody","drivewheel","enginelocation","enginetype","cylindernumber","fuelsystem"]
+
+stri_cols
+
+stri_cols_index=["fueltype_idx","aspiration_idx","doornumber_idx","carbody_idx","drivewheel_idx","enginelocation_idx","enginetype_idx","cylindernumber_idx","fuelsystem_idx"]
+
+si=StringIndexer(inputCols=stri_cols,outputCols=stri_cols_index)
+
+df_index=si.fit(df).transform(df)
+
+df_index.select(stri_cols_index).show()
+
+stri_cols_ohe=["fueltype_ohe","aspiration_ohe","doornumber_ohe","carbody_ohe","drivewheel_ohe","enginelocation_ohe","enginetype_ohe","cylindernumber_ohe","fuelsystem_ohe"]
+
+ohe=OneHotEncoder(inputCols=stri_cols_index,outputCols=stri_cols_ohe)
+
+df_index=ohe.fit(df_index).transform(df_index)
+
+df_index.select(stri_cols_ohe).show()
+
+va=VectorAssembler(inputCols=stri_cols_ohe,outputCol="features")
+df_index=va.transform(df_index)
+
+# Here we are taking dependent Variable y as price and rest as independent variables x 
+df_final=df_index.select("features","price")
+
+df_final.show()
+
+df_final=df_final.withColumnRenamed("price","label")
+
+# Splitting the data
+train,test=df_final.randomSplit([.80,.20],seed=1)
+
+linreg=LinearRegression(featuresCol="features",labelCol="label")
+linreg=linreg.fit(train)
+
+predict_train=linreg.transform(train)
+predict_test=linreg.transform(test)
+
+from pyspark.ml.evaluation import RegressionEvaluator
+eval=RegressionEvaluator()
+
+eval=eval.evaluate(predict_test,{eval.metricName:"r2"})
+eval
+
+
+Practical 8   de clustering using pyspark
+
+
+import pyspark
+from pyspark import SparkContext
+from pyspark.sql import SparkSession
+from pyspark.ml.feature import StringIndexer,OneHotEncoder,VectorAssembler,StandardScaler
+from pyspark.ml import Pipeline
+from pyspark.ml.clustering import KMeans
+import matplotlib.pyplot as plt
+from pyspark.ml.evaluation import ClusteringEvaluator
+
+df=spark.read.option("inferSchema",True).option("header",True).csv("/FileStore/tables/Mall_Customers.csv")
+df.show(5)
+
+df=df.drop("CustomerID")
+
+si=StringIndexer(inputCols=["Genre"],outputCols=["Genre_idx"])
+
+ohe=OneHotEncoder(inputCols=["Genre_idx"],outputCols=["Genre_ohe"])
+
+va=VectorAssembler(inputCols=["Genre_ohe","Age","Annual Income (k$)","Spending Score (1-100)"],outputCol="features")
+
+scaler=StandardScaler(inputCol="features",outputCol="scaled_cols")
+
+pipeline=Pipeline(stages=[si,ohe,va,scaler])
+
+df_pipeline=pipeline.fit(df).transform(df)
+
+df_pipeline.show()
+
+df_final=df_pipeline.select("scaled_cols")
+
+df_final.show(5)
+
+# Create a KMeans instance
+#plot showing the value of k with the lowest training cost or within cluster sum of square distance
+score=[]
+for i in range(2,21):
+    model=KMeans(featuresCol="scaled_cols", k=i, initMode='k-means||').fit(df_final)
+    prediction=model.transform(df_final)
+
+    dist=model.summary.trainingCost
+    score.append(dist)
+
+plt.title("Elbow plot k vs trainingCost(wcss)", color="Red")
+plt.xlabel("k", color="blue")
+plt.ylabel("Training cost", color="green")
+plt.plot(range(2,21), score)
+plt.show()
+
+#plot showing the value of k with thw highest shilloutte score
+shscore=[]
+for i in range(2,21):
+    model=KMeans(featuresCol="scaled_cols", k=i, initMode="k-means||").fit(df_final)
+    prediction=model.transform(df_final)
+    evaluator=ClusteringEvaluator(predictionCol="prediction", featuresCol="scaled_cols")
+    evaluator=evaluator.evaluate(prediction)
+    print(i, evaluator)
+
+    shscore.append(evaluator)
+
+plt.title("Elbow plot k vs shillouette score")
+plt.xlabel("k")
+plt.ylabel("shillouette score")
+plt.plot(range(2,21), shscore)
+plt.show()
+
+mod_final=KMeans(featuresCol="scaled_cols",k=8,initMode="k-means||").fit(df_final)
+
+prediction=mod_final.transform(df_final)
+prediction.show()
+
+prediction.groupBy('prediction').count().show()
+
+df_pd=df.toPandas()
+df_pd.head()
+
+prediction_pd=prediction.toPandas()
+
+df_pd["cluster"]=prediction_pd["prediction"]
+
+df_pd.head()
+
+plt.scatter(df_pd["Age"],df_pd["Spending Score (1-100)"],c=df_pd["cluster"] ,label=range(0,7))
+plt.legend()
+plt.show()
+
+
+practical 5  Data pipeline
+
+from pyspark.sql import SparkSession
+from pyspark.ml.feature import VectorAssembler, StringIndexer
+from pyspark.ml.classification import LogisticRegression
+from pyspark.ml.evaluation import BinaryClassificationEvaluator
+from pyspark.sql.functions import col
+import pandas as pd 
+import numpy as np
+
+# Load the dataset
+df_bank =spark.read.option("inferSchema",True).option("header",True).csv("/FileStore/tables/bank_new.csv")
+# Show the first few rows
+df_bank.show()
+
+data=df_bank.toPandas()
+
+data["housing"].unique()
+
+data["deposit"].unique()
+
+data["loan"].unique()
+
+from sklearn.preprocessing import LabelEncoder
+le=LabelEncoder()
+data["housing"]=le.fit_transform(data["housing"])
+data["deposit"]=le.fit_transform(data["deposit"])
+data["loan"]=le.fit_transform(data["loan"])
+data["marital"]=le.fit_transform(data["marital"])
+data["education"]=le.fit_transform(data["education"])
+data["poutcome"]=le.fit_transform(data["poutcome"])
+
+data["marital"].unique()
+
+data["education"].unique()
+
+data.loan.unique()
+
+data.head()
+
+from sklearn.model_selection import train_test_split
+x=data.drop(["job", "loan", "default", "contact", "month"],axis=1).values
+y=data["loan"].values
+
+x_tr,x_test,y_tr,y_test=train_test_split(x,y,test_size=0.2,random_state=1)
+
+from sklearn.preprocessing import StandardScaler
+scaler=StandardScaler()
+x_tr=scaler.fit_transform(x_tr)
+x_test=scaler.fit_transform(x_test)
+
+from sklearn.linear_model import LogisticRegression
+lr = LogisticRegression()
+
+lr.fit(x_tr,y_tr)
+
+y_pred=lr.predict(x_test)
+y_pred
+
+lr.score(x_test,y_test)
+
+y_prob=lr.predict_proba(x_test)
+y_prob
+
+from sklearn.metrics import accuracy_score
+accuracy=accuracy_score(y_test, y_pred)
+print(accuracy)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
