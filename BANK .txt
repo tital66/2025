@@ -1,0 +1,109 @@
+BANK 
+select * from bank_table limit 10;
+
+//print records of customer who are married
+select * from bank_table where marital='married'; 
+
+//print the records of the customers who are both married and unemployed 
+select * from bank_table where marital='married' and job='unemployed'; 
+
+select distinct education from bank_table; 
+
+select distinct job from bank_table; 
+
+//select the education and balance of the customers who are either self employed or received tertiery education or both 
+select education,job, balance from bank_table 
+where job='self-employed' or education='tertiary'; 
+
+select job,marital, balance, education from bank_table
+where marital='married' and education!='secondary' limit 5;
+
+select marital,max(balance) from bank_table group by marital;
+
+//print the highest balance for the customers who are married 
+select max(balance) from bank_table where marital='married'; 
+
+//print the lowest balance for the customers who do a blue collarred job 
+select min(balance) from bank_table where job='blue-collar'; 
+
+//print the job of the customers who maintain maximum balance in the bank 
+select job from bank_table where balance=(select max(balance) from bank_table)
+
+HOSPITAL   
+create table dim_patient(patient_id int primary key, 
+patient_name varchar(20),address varchar(30),ailment varchar(20), 
+dt_of_admit date,dt_of_discharge date); 
+
+create table fact_admit(bed_no int primary key, 
+patient_id int,doc_id int,age int,salary bigint); 
+
+create table dim_doc(doc_id int primary key, 
+doc_name varchar(30),specialisation varchar(20),qualification varchar(30)); 
+
+alter table dim_patient add column disease varchar(20);
+
+alter table fact_admit add constraint 
+fk1 foreign key(patient_id) references dim_patient(patient_id); 
+
+describe table dim_patient; 
+
+alter table fact_admit add constraint 
+fk2 foreign key(doc_id) references dim_doc(doc_id); 
+
+insert into dim_patient values(1,'Rahul','Goregaon','Fever','2023-03-01','2023-03-02','Allergy');
+insert into dim_patient values(2,'Manish','Bhandup','stomache ache','2023-06-10','2023-06- 12','IBS');
+insert into dim_patient values(3,'Seema','Kandivili','chest pain','2023-07-01','2023-08-08','Cardiac Arrest'); 
+insert into dim_patient values(4,'Seema','Goregaon','Leg pain','2023-10-05','2023-10- 09','Fracture');
+insert into dim_patient values(5,'Animesh','Churchgate','Knee pain','2023-11-06','2023-11- 09','Osteo-arthritis');
+select * from dim_patient;
+
+update dim_patient set patient_name='Tina' where patient_id=4;
+select * from dim_patient;
+
+insert into dim_doc values(1,'Dr.Santosh Rane','Cardiac','MD'); 
+insert into dim_doc values(2,'Dr.Dsouza','Gastric','MBBS'); 
+insert into dim_doc values(3,'Dr.Ruma Patil','Paediatric','MD'); 
+insert into dim_doc values(4,'Dr.Sachin Rao','Orthopaedic','MD');
+select * from dim_doc;
+
+truncate table dim_patient; 
+select * from dim_patient;
+
+insert into fact_admit values(100,2,2,25,100000); 
+insert into fact_admit values(101,1,3,10,150000);
+insert into fact_admit values(102,3,1,65,180000); 
+insert into fact_admit values(103,4,4,22,150000); 
+insert into fact_admit values(104,5,4,70,150000); 
+select * from fact_admit;
+
+//(i)Get the names of the patients who are admitted under "Dr.Dsouza". 
+select * from dim_patient; 
+select patient_name from dim_patient join dim_doc join fact_admit 
+where dim_patient.patient_id=fact_admit.patient_id and dim_doc.doc_id=fact_admit.doc_id 
+and doc_name='Dr.Dsouza';
+
+//(ii)Get the name and age of the patients who are admitted for more than 10 days. 
+select patient_name,age from dim_patient join fact_admit 
+on dim_patient.patient_id=fact_admit.patient_id 
+where dt_of_discharge-dt_of_admit>=5; 
+
+//(iii) Create a copy of the "patient" table as "patient_backup". 
+create table patient_backup as (select * from dim_patient);
+
+//(iv)Get the name of the doctor who is treating the patient "Rahul". 
+select doc_name from dim_doc join fact_admit join dim_patient 
+on dim_patient.patient_id=fact_admit.patient_id 
+and dim_doc.doc_id=fact_admit.doc_id and patient_name='Rahul';
+
+//(v)Get the patient_ids of the patients who have got admitted under "Cardiac" specialists 
+select dim_patient.patient_id
+from dim_patient join fact_admit join dim_doc
+on dim_patient.patient_id=fact_admit.patient_id
+and dim_doc.doc_id=fact_admit.doc_id
+where specialisation='Cardiac';
+
+//(vi) Get the "qualification" of the doctors who are treating patients 
+//within the age range of 60 yrs to 80 yrs. 
+select distinct qualification from dim_doc join fact_admit 
+on dim_doc.doc_id=fact_admit.doc_id 
+where age between 60 and 80;
